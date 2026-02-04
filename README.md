@@ -1,6 +1,6 @@
-If you're using a Pascal NVidia GPU you'll need the 126 bindings for CUDA
+If you're using a Pascal NVidia GPU you'll need the 12.6 bindings for CUDA
 ```sh
-pip install torch torchaudio --extra-index-url https://download.pytorch.org/whl/cu126
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
 ```
 
 The translation happens through the Google Cloud Translation API, note that this API requires you to enable billing. You
