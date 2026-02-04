@@ -92,6 +92,8 @@ def timestamp_format(milli: int) -> str:
     sec = milli // 1000
     minutes = sec // 60
     hours = minutes // 60
+    sec = sec % 60
+    minutes = minutes % 60
     return f"{hours:02}:{minutes:02}:{sec:02},{mil:03}"
 
 
