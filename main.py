@@ -1,6 +1,7 @@
 # TODO: Make use of timestamp prediction
 # TODO: Add a translator model to translate before generating sub file
 
+import argparse
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from moviepy import VideoFileClip
@@ -19,6 +20,7 @@ API_KEY = environ.get("GOOGLE_API")
 JAPANESE = "ja"
 ENGLISH = "en"
 MODEL = "iic/SenseVoiceSmall"
+SRT_PATH = "sub.srt"
 
 
 class Transcriber:
@@ -93,10 +95,10 @@ def timestamp_format(milli: int) -> str:
     return f"{hours:02}:{minutes:02}:{sec:02},{mil:03}"
 
 
-def main():
-    video_path = "test.mp4"
+def main(args):
     wav_path = "test.wav"
-    srt_path = "sub.srt"
+    video_path = args.input_video
+    srt_path = args.o
 
     extract_wav(video_path, wav_path)
 
@@ -137,4 +139,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_video")
+    parser.add_argument("-o", type=str, default=SRT_PATH)
+    args = parser.parse_args()
+    main(args)
