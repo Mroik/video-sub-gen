@@ -4,12 +4,20 @@
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from moviepy import VideoFileClip
-from os import remove
+from os import remove, environ
+from os.path import exists
 from itertools import count
 from typing import Tuple, List
+from google.cloud import translate_v2 as translate
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from html import unescape
 
 
+API_KEY = environ.get("GOOGLE_API")
 JAPANESE = "ja"
+ENGLISH = "en"
 MODEL = "iic/SenseVoiceSmall"
 
 
@@ -32,6 +40,35 @@ class Transcriber:
             # merge_length_s=15,
         )
         return rich_transcription_postprocess(res[0]["text"])
+
+
+class Translator:
+    def __init__(self):
+        creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if exists("token.json"):
+            creds = Credentials.from_authorized_user_file("token.json")
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    "credentials.json",
+                    "https://www.googleapis.com/auth/cloud-translation",
+                )
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open("token.json", "w") as token:
+                token.write(creds.to_json())
+
+        self.client = translate.Client(credentials=creds)
+
+    def translate(self, text, source_lang: str, target_lang: str) -> str:
+        res = self.client.translate(text, source_language=source_lang, target_language=target_lang)
+        return unescape(res["translatedText"])
 
 
 def detect_segments(wav_path: str) -> List[List[int]]:
@@ -84,8 +121,11 @@ def main():
 
         seg_with_stamp.append((interval, text))
 
-    print(seg_with_stamp)
     remove(wav_path)
+    del model
+
+    translator = Translator()
+    seg_with_stamp = map(lambda x: (x[0], translator.translate(x[1], JAPANESE, ENGLISH)), seg_with_stamp)
 
     with open(srt_path, "w") as fd:
         for i, (interval, text) in enumerate(seg_with_stamp, start=1):

@@ -2,3 +2,5 @@ venv
 test.mp4
 sub.srt
 .env
+credentials.json
+token.json
