@@ -1,5 +1,4 @@
 # TODO: Make use of timestamp prediction
-# TODO: Add a translator model to translate before generating sub file
 
 import argparse
 from funasr import AutoModel
@@ -9,10 +8,6 @@ from os import remove, environ
 from os.path import exists
 from itertools import count
 from typing import Tuple, List
-from google.cloud import translate_v2 as translate
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from html import unescape
 
 
@@ -21,6 +16,13 @@ JAPANESE = "ja"
 ENGLISH = "en"
 MODEL = "iic/SenseVoiceSmall"
 SRT_PATH = "sub.srt"
+TRANSLATOR_MODEL = "opus-mt"
+TRANSLATION_MODE = None
+
+
+class Translator:
+    def translate(self, text: str, source: str, target: str):
+        pass
 
 
 class Transcriber:
@@ -44,15 +46,28 @@ class Transcriber:
         return rich_transcription_postprocess(res[0]["text"])
 
 
-class Translator:
+class SelfHostedTranslator(Translator):
     def __init__(self):
+        import nltk
+        from easynmt import EasyNMT
+        nltk.download("punkt_tab")
+        self.model = EasyNMT(TRANSLATOR_MODEL)
+
+    def translate(self, text: str, source: str, target: str):
+        return self.model.translate(text, target_lang=target, source_lang=source)
+
+
+class GoogleTranslator(Translator):
+    def __init__(self):
+        from google.cloud import translate_v2 as translate
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from google_auth_oauthlib.flow import InstalledAppFlow
+
         creds = None
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
         if exists("token.json"):
             creds = Credentials.from_authorized_user_file("token.json")
-        # If there are no (valid) credentials available, let the user log in.
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -62,14 +77,14 @@ class Translator:
                     "https://www.googleapis.com/auth/cloud-translation",
                 )
                 creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
+
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
 
         self.client = translate.Client(credentials=creds)
 
-    def translate(self, text, source_lang: str, target_lang: str) -> str:
-        res = self.client.translate(text, source_language=source_lang, target_language=target_lang)
+    def translate(self, text: str, source: str, target: str) -> str:
+        res = self.client.translate(text, source_language=source, target_language=target)
         return unescape(res["translatedText"])
 
 
@@ -128,9 +143,10 @@ def main(args):
     remove(wav_path)
     del model
 
-    translator = Translator()
+    translator: Translator = TRANSLATION_MODE()
     seg_with_stamp = map(lambda x: (x[0], translator.translate(x[1], JAPANESE, ENGLISH)), seg_with_stamp)
 
+    print("Starting translation...")
     with open(srt_path, "w") as fd:
         for i, (interval, text) in enumerate(seg_with_stamp, start=1):
             fd.write(f"{i}\n")
@@ -144,5 +160,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_video")
     parser.add_argument("-o", type=str, default=SRT_PATH)
+    parser.add_argument("-g", action="store_true", help="Use the Google Cloud Translation API instead of the local "
+                        "translator")
     args = parser.parse_args()
+    TRANSLATION_MODE = GoogleTranslator if args.g else SelfHostedTranslator
     main(args)
