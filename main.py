@@ -119,18 +119,13 @@ def main(args):
 
     extract_wav(video_path, wav_path)
 
-    segments = iter(detect_segments(wav_path))
+    segments = detect_segments(wav_path)
     seg_with_stamp: List[Tuple[List[int], str]] = []
     video = VideoFileClip(video_path)
     model = Transcriber()
     interval: List[int] = None
-    for i in count(1):
+    for i, interval in enumerate(segments):
         seg_filename = f"{i}_{wav_path}"
-
-        try:
-            interval = next(segments)
-        except StopIteration:
-            break
 
         audio_seg = video.subclipped(interval[0] / 1000, interval[1] / 1000).audio
         audio_seg.write_audiofile(seg_filename)
