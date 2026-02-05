@@ -53,7 +53,8 @@ class SelfHostedTranslator(Translator):
         self.model = EasyNMT(TRANSLATOR_MODEL)
 
     def translate(self, text: str, source: str, target: str):
-        return self.model.translate(text, target_lang=target, source_lang=source)
+        res = self.model.translate(text, target_lang=target, source_lang=source)
+        return unescape(res)
 
 
 class GoogleTranslator(Translator):
