@@ -6,14 +6,13 @@ from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from moviepy import VideoFileClip
 from os import remove, environ
 from os.path import exists
-from itertools import count
 from typing import Tuple, List
 from html import unescape
 
 
 API_KEY = environ.get("GOOGLE_API")
-JAPANESE = "ja"
-ENGLISH = "en"
+SOURCE_LANG = "ja"
+TARGET_LANG = "en"
 MODEL = "iic/SenseVoiceSmall"
 SRT_PATH = "sub.srt"
 TRANSLATOR_MODEL = "opus-mt"
@@ -130,7 +129,7 @@ def main(args):
         audio_seg = video.subclipped(interval[0] / 1000, interval[1] / 1000).audio
         audio_seg.write_audiofile(seg_filename)
 
-        text = model.transcribe(seg_filename, JAPANESE)
+        text = model.transcribe(seg_filename, SOURCE_LANG)
         remove(seg_filename)
 
         seg_with_stamp.append((interval, text))
@@ -139,7 +138,7 @@ def main(args):
     del model
 
     translator: Translator = TRANSLATION_MODE()
-    seg_with_stamp = map(lambda x: (x[0], translator.translate(x[1], JAPANESE, ENGLISH)), seg_with_stamp)
+    seg_with_stamp = map(lambda x: (x[0], translator.translate(x[1], SOURCE_LANG, TARGET_LANG)), seg_with_stamp)
 
     print("Starting translation...")
     with open(srt_path, "w") as fd:
@@ -157,6 +156,12 @@ if __name__ == "__main__":
     parser.add_argument("-o", type=str, default=SRT_PATH)
     parser.add_argument("-g", action="store_true", help="Use the Google Cloud Translation API instead of the local "
                         "translator")
+    parser.add_argument("-s", default="ja", help="The language from which to translate")
+    parser.add_argument("-t", default="en", help="The language to translate to")
     args = parser.parse_args()
     TRANSLATION_MODE = GoogleTranslator if args.g else SelfHostedTranslator
+    if args.s:
+        SOURCE_LANG = args.s
+    if args.t:
+        TARGET_LANG = args.t
     main(args)
