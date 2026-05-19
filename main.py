@@ -1,6 +1,7 @@
 # TODO: Make use of timestamp prediction
 
 import argparse
+from abc import ABC, abstractmethod
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from moviepy import VideoFileClip
@@ -19,9 +20,10 @@ TRANSLATOR_MODEL = "opus-mt"
 TRANSLATION_MODE = None
 
 
-class Translator:
+class Translator(ABC):
+    @abstractmethod
     def translate(self, text: str, source: str, target: str):
-        pass
+        ...
 
 
 class Transcriber:
