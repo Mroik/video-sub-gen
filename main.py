@@ -2,6 +2,7 @@
 
 import argparse
 from abc import ABC, abstractmethod
+from tempfile import TemporaryDirectory
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from moviepy import VideoFileClip
@@ -115,7 +116,8 @@ def timestamp_format(milli: int) -> str:
 
 
 def main(args):
-    wav_path = "test.wav"
+    tempdir = TemporaryDirectory()
+    wav_path = f"{tempdir.name}/test.wav"
     video_path = args.input_video
     srt_path = args.o
 
@@ -127,7 +129,7 @@ def main(args):
     model = Transcriber()
     interval: List[int] = None
     for i, interval in enumerate(segments):
-        seg_filename = f"{i}_{wav_path}"
+        seg_filename = f"{tempdir.name}/seg_{i}.wav"
 
         audio_seg = video.subclipped(interval[0] / 1000, interval[1] / 1000).audio
         audio_seg.write_audiofile(seg_filename)
@@ -139,6 +141,7 @@ def main(args):
 
     remove(wav_path)
     del model
+    tempdir.cleanup()
 
     translator: Translator = TRANSLATION_MODE()
     seg_with_stamp = map(lambda x: (x[0], translator.translate(x[1], SOURCE_LANG, TARGET_LANG)), seg_with_stamp)
