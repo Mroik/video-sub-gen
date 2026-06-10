@@ -18,6 +18,11 @@ I personally use a GTX 1070 so I need to install the pytorch version for CUDA 12
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu126
 ```
 
+> [!NOTE]
+> If building tokenizers fails try installing the dependencies in two passes. First install everything without
+> EasyNMT==2.0.2 and nltk==3.9.4 using --extra-index-url if necessary, then install the remaining EasyNMT and nltk, this
+> time --extra-index-url is not required.
+
 ## Translation model
 By default this project uses a local model for translation, but you can use the Google Cloud Translation API instead by
 passing the `-g` argument. To use the Translation API you'll need to setup access to the API on your own through the
